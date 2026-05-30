@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Ahuyentador IoT</title>
+    <!-- Cargamos las librerías estables de Firebase (Compatibilidad) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        body { font-family: 'Arial', sans-serif; text-align: center; background-color: #f4f6f9; padding: 50px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: inline-block; }
+        h1 { color: #333; }
+        .btn { padding: 15px 30px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: bold; transition: 0.2s; }
+        .btn-on { background-color: #2ec4b6; color: white; }
+        .btn-on:hover { background-color: #209e93; }
+        .btn-off { background-color: #e71d36; color: white; }
+        .btn-off:hover { background-color: #b81427; }
+        #status { font-size: 18px; margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Control del Ahuyentador Inteligente</h1>
+        <p>Panel de administración alojado en la nube (Firebase API)</p>
+        
+        <button class="btn btn-on" onclick="controlarSistema(true)">ACTIVAR SISTEMA</button>
+        <button class="btn btn-off" onclick="controlarSistema(false)">APAGAR SISTEMA</button>
+        
+        <div id="status">Estado actual en la nube: Cargando...</div>
+    </div>
+
+    <script>
+        // Tus credenciales exactas obtenidas de la consola de Firebase
+        var firebaseConfig = {
+            apiKey: "AIzaSyBzmUQKty9xOawDYwMFt-aVycX-xcRFiIc",
+            authDomain: "ahuyentador-ae35d.firebaseapp.com",
+            databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com",
+            projectId: "ahuyentador-ae35d",
+            storageBucket: "ahuyentador-ae35d.firebasestorage.app",
+            messagingSenderId: "928891718509",
+            appId: "1:928891718509:web:b3140baca45ba24e8ee864"
+        };
+        
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        var database = firebase.database();
+
+        // Función para cambiar el estado desde los botones
+        function controlarSistema(estado) {
+            database.ref('/').update({
+                estado_sistema: estado
+            }).then(() => {
+                console.log("Estado actualizado correctamente.");
+            }).catch((error) => {
+                console.error("Error al actualizar: ", error);
+            });
+        }
+
+        // Escuchar cambios en tiempo real para mostrarlo en la interfaz
+        database.ref('/estado_sistema').on('value', (snapshot) => {
+            var estado = snapshot.val();
+            var statusDiv = document.getElementById('status');
+            if(estado === true) {
+                statusDiv.innerHTML = "Estado actual en la nube: <span style='color: #2ec4b6;'>VIGILANDO (ON)</span>";
+            } else {
+                statusDiv.innerHTML = "Estado actual en la nube: <span style='color: #e71d36;'>INACTIVO (OFF)</span>";
+            }
+        });
+    </script>
+</body>
+</html>
