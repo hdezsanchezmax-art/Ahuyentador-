@@ -2,116 +2,77 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Ahuyentador Inteligente</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .status-online { color: #28a745; font-weight: bold; }
-        .table-container { max-height: 400px; overflow-y: auto; }
-        #btn-control { width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 10px; transition: 0.3s; }
-    </style>
+    <title>Panel de Control - Iron Man Security</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            
-            <div class="text-center mb-4">
-                <h2 class="fw-bold">Sistema de Seguridad UV</h2>
-                <p class="text-muted">Facultad de Contaduría y Administración</p>
-            </div>
+    <h2>Control del Sistema</h2>
+    <button id="btnSistema" onclick="toggleSistema()" style="padding: 10px 20px; cursor: pointer;">
+        Cargando estado...
+    </button>
 
-            <div class="card p-4 mb-4">
-                <h5 class="card-title mb-3">Estado del Sistema</h5>
-                <button id="btn-control" class="btn btn-secondary">Cargando estado...</button>
-                <p class="text-center mt-2 mb-0">Estado actual: <span id="lbl-estado">Desconocido</span></p>
-            </div>
+    <hr>
 
-            <div class="card p-4">
-                <h5 class="card-title mb-3">Historial de Movimiento</h5>
-                <div class="table-container">
-                    <table class="table table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Evento</th>
-                                <th>Fecha y Hora</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-cuerpo">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<script>
-    // 1. CONFIGURACIÓN (Usa tus credenciales)
-    const firebaseConfig = {
-        databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // 2. REFERENCIAS
-    const btnControl = document.getElementById('btn-control');
-    const lblEstado = document.getElementById('lbl-estado');
-    const tablaCuerpo = document.getElementById('tabla-cuerpo');
-
-    // 3. LOGICA DEL BOTÓN (ENCENDER/APAGAR)
-    let sistemaActivo = false;
-
-    db.ref('estado_sistema').on('value', (snapshot) => {
-        sistemaActivo = snapshot.val();
-        if (sistemaActivo) {
-            btnControl.innerText = "DESACTIVAR SISTEMA";
-            btnControl.className = "btn btn-danger";
-            lblEstado.innerText = "ACTIVO Y VIGILANDO";
-            lblEstado.className = "status-online";
-        } else {
-            btnControl.innerText = "ACTIVAR SISTEMA";
-            btnControl.className = "btn btn-success";
-            lblEstado.innerText = "APAGADO";
-            lblEstado.className = "text-secondary";
-        }
-    });
-
-    btnControl.onclick = () => {
-        db.ref('estado_sistema').set(!sistemaActivo);
-    };
-
-    // 4. ACTUALIZACIÓN AUTOMÁTICA DE LA TABLA
-    // 'child_added' hace que la tabla se actualice sin refrescar la página
-    db.ref('detecciones').limitToLast(15).on('child_added', (snapshot) => {
-        const ahora = new Date();
-        const tiempoStr = ahora.toLocaleDateString() + " " + ahora.toLocaleTimeString();
-        
-        // Creamos la fila
-        let nuevaFila = `
+    <h3>Historial de Movimientos</h3>
+    <table border="1" id="tablaMovimientos" style="width: 100%; text-align: left;">
+        <thead>
             <tr>
-                <td><strong class="text-primary">Movimiento confirmado</strong></td>
-                <td>${tiempoStr}</td>
-                <td><span class="badge bg-warning text-dark">Detectado</span></td>
+                <th>Evento</th>
+                <th>Fecha y Hora</th>
             </tr>
-        `;
-        
-        // La insertamos al inicio de la tabla
-        tablaCuerpo.insertAdjacentHTML('afterbegin', nuevaFila);
-    });
-</script>
+        </thead>
+        <tbody id="cuerpoTabla">
+            </tbody>
+    </table>
 
+    <script>
+        // CONFIGURACIÓN DE TU FIREBASE
+        const firebaseConfig = {
+            databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 1. ESCUCHAR EL BOTÓN (ENCENDIDO/APAGADO)
+        const btn = document.getElementById('btnSistema');
+        let estadoActual = false;
+
+        db.ref('estado_sistema').on('value', (snapshot) => {
+            estadoActual = snapshot.val();
+            btn.innerText = estadoActual ? "DESACTIVAR SISTEMA" : "ACTIVAR SISTEMA";
+            btn.style.backgroundColor = estadoActual ? "#ff4d4d" : "#4CAF50";
+            btn.style.color = "white";
+        });
+
+        function toggleSistema() {
+            db.ref('estado_sistema').set(!estadoActual);
+        }
+
+        // 2. TABLA EN TIEMPO REAL (SIN REFRESCAR)
+        db.ref('detecciones').on('value', (snapshot) => {
+            const cuerpo = document.getElementById('cuerpoTabla');
+            cuerpo.innerHTML = ""; // Limpiar tabla
+            
+            const data = snapshot.val();
+            if (data) {
+                // Convertir a array y voltear para ver el más nuevo arriba
+                const registros = Object.keys(data).reverse();
+                
+                registros.forEach(key => {
+                    const item = data[key];
+                    let fila = `<tr>
+                        <td>${item.evento || "Movimiento Detectado"}</td>
+                        <td>${new Date(parseInt(key.split('_')[1])).toLocaleString()}</td>
+                    </tr>`;
+                    cuerpo.innerHTML += fila;
+                });
+            }
+        });
+    </script>
 </body>
 </html>
-
 
 
