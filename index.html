@@ -2,76 +2,102 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel de Control - Iron Man Security</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Seguridad - Facultad de Contaduría y Administración</title>
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; }
+        .status-card { margin: 20px 0; padding: 15px; border-radius: 10px; font-weight: bold; }
+        #btnSistema { padding: 15px 30px; font-size: 18px; cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: center; }
+        th { background-color: #2c3e50; color: white; }
+        .new-row { background-color: #e8f5e9; animation: highlight 2s; }
+        @keyframes highlight { from { background-color: #fff9c4; } to { background-color: transparent; } }
+    </style>
 </head>
 <body>
 
-    <h2>Control del Sistema</h2>
-    <button id="btnSistema" onclick="toggleSistema()" style="padding: 10px 20px; cursor: pointer;">
-        Cargando estado...
-    </button>
+<div class="container">
+    <h1>Vigilante Iron Man</h1>
+    
+    <div class="status-card">
+        <button id="btnSistema" onclick="toggleSistema()">Cargando sistema...</button>
+    </div>
 
     <hr>
 
-    <h3>Historial de Movimientos</h3>
-    <table border="1" id="tablaMovimientos" style="width: 100%; text-align: left;">
+    <h3>Registro de Actividad (Tiempo Real)</h3>
+    <table>
         <thead>
             <tr>
                 <th>Evento</th>
-                <th>Fecha y Hora</th>
+                <th>Hora de Detección</th>
             </tr>
         </thead>
         <tbody id="cuerpoTabla">
             </tbody>
     </table>
+</div>
 
-    <script>
-        // CONFIGURACIÓN DE TU FIREBASE
-        const firebaseConfig = {
-            databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com"
-        };
+<script>
+    // Tu configuración de Firebase
+    const firebaseConfig = {
+        databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 1. CONTROL DEL BOTÓN (ON/OFF)
+    const btn = document.getElementById('btnSistema');
+    let estadoActual = false;
+
+    db.ref('estado_sistema').on('value', (snapshot) => {
+        estadoActual = snapshot.val();
+        btn.innerText = estadoActual ? "SISTEMA ARMADO (ON)" : "SISTEMA DESACTIVADO (OFF)";
+        btn.style.backgroundColor = estadoActual ? "#e74c3c" : "#2ecc71";
+        btn.style.color = "white";
+    });
+
+    function toggleSistema() {
+        db.ref('estado_sistema').set(!estadoActual);
+    }
+
+    // 2. TABLA AUTOMÁTICA (Muestra los últimos 5 eventos)
+    db.ref('detecciones').limitToLast(5).on('value', (snapshot) => {
+        const cuerpo = document.getElementById('cuerpoTabla');
+        cuerpo.innerHTML = ""; // Limpia para no duplicar
         
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // 1. ESCUCHAR EL BOTÓN (ENCENDIDO/APAGADO)
-        const btn = document.getElementById('btnSistema');
-        let estadoActual = false;
-
-        db.ref('estado_sistema').on('value', (snapshot) => {
-            estadoActual = snapshot.val();
-            btn.innerText = estadoActual ? "DESACTIVAR SISTEMA" : "ACTIVAR SISTEMA";
-            btn.style.backgroundColor = estadoActual ? "#ff4d4d" : "#4CAF50";
-            btn.style.color = "white";
-        });
-
-        function toggleSistema() {
-            db.ref('estado_sistema').set(!estadoActual);
-        }
-
-        // 2. TABLA EN TIEMPO REAL (SIN REFRESCAR)
-        db.ref('detecciones').on('value', (snapshot) => {
-            const cuerpo = document.getElementById('cuerpoTabla');
-            cuerpo.innerHTML = ""; // Limpiar tabla
+        const data = snapshot.val();
+        if (data) {
+            // Ordenar por la "key" (ID_) que tiene el timestamp de Arduino
+            const keys = Object.keys(data).sort().reverse();
             
-            const data = snapshot.val();
-            if (data) {
-                // Convertir a array y voltear para ver el más nuevo arriba
-                const registros = Object.keys(data).reverse();
-                
-                registros.forEach(key => {
-                    const item = data[key];
-                    let fila = `<tr>
-                        <td>${item.evento || "Movimiento Detectado"}</td>
-                        <td>${new Date(parseInt(key.split('_')[1])).toLocaleString()}</td>
-                    </tr>`;
-                    cuerpo.innerHTML += fila;
-                });
-            }
-        });
-    </script>
+            keys.forEach(key => {
+                const registro = data[key];
+                // Formateamos la hora actual para que coincida con tu reloj
+                const ahora = new Date();
+                const horaLegible = ahora.getHours() + ":" + 
+                                    ahora.getMinutes().toString().padStart(2, '0') + ":" + 
+                                    ahora.getSeconds().toString().padStart(2, '0');
+
+                let fila = `<tr class="new-row">
+                    <td>⚠️ Movimiento Confirmado</td>
+                    <td>${horaLegible}</td>
+                </tr>`;
+                cuerpo.innerHTML += fila;
+            });
+        } else {
+            cuerpo.innerHTML = "<tr><td colspan='2'>Sin actividad reciente</td></tr>";
+        }
+    });
+</script>
+
 </body>
 </html>
-
