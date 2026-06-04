@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Seguridad - Facultad de Contaduría y Administración</title>
     <style>
-        /* Estilos generales para una interfaz limpia y profesional */
         body {
             font-family: 'Arial', sans-serif;
             background-color: #1a1a2e;
@@ -54,7 +53,6 @@
         .btn:active {
             transform: scale(0.98);
         }
-        /* Clases de estado dinámicas que cambiarán por JavaScript */
         .btn-loading {
             background-color: #7f8c8d !important;
             cursor: not-allowed;
@@ -110,55 +108,52 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // =======================================================
         // CONFIGURACIÓN DE TU PROYECTO FIREBASE
-        // =======================================================
         const firebaseConfig = {
-            apiKey: "QIx1fsb9ByxU3umIlPHcVfFOUDAWyjeqG1WDXMjP", // Usando tu Auth Token como API Key funcional
+            apiKey: "QIx1fsb9ByxU3umIlPHcVfFOUDAWyjeqG1WDXMjP",
             authDomain: "ahuyentador-ae35d.firebaseapp.com",
             databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com/",
             projectId: "ahuyentador-ae35d",
             storageBucket: "ahuyentador-ae35d.appspot.com",
             messagingSenderId: "928891718509",
-            appId: "1:928891718509:web:7245bca534a65b821bc084" // Generado de tu ID de proyecto
+            appId: "1:928891718509:web:7245bca534a65b821bc084"
         };
 
-        // Inicializar la conexión con la base de datos en la nube
+        // Inicializar Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.database();
 
-        // Variable global para controlar las acciones de renderizado
         let sistemaActivo = false;
+        let cargaInicialCompleta = false;
 
-        // =======================================================
-        // 1. ESCUCHAR EL ESTADO DEL INTERRUPTOR EN LA NUBE
-        // =======================================================
+        // Escuchar cuando termine de leer los registros viejos en la base de datos
+        db.ref('/detecciones').once('value', () => {
+            cargaInicialCompleta = true;
+        });
+
+        // 1. ESCUCHAR EL ESTADO DEL INTERRUPTOR (ON / OFF)
         db.ref('/estado_sistema').on('value', (snapshot) => {
             sistemaActivo = snapshot.val();
             
             const boton = document.getElementById('boton-sistema');
             const tabla = document.getElementById('tabla-actividad');
             
-            // Remover clase de carga inicial si existe
             boton.classList.remove('btn-loading');
             
-            if (sistemaActivo) {
-                // Configuración visual para el Estado Encendido (ON)
+            if (sistemaActivo === true) {
                 boton.innerHTML = "SISTEMA ARMADO (ON)";
                 boton.className = "btn btn-on";
                 
-                // Si la tabla contenía el aviso de apagado, lo limpiamos para recibir alertas reales
                 if (tabla.innerHTML.includes("Sistema apagado")) {
                     tabla.innerHTML = "";
                 }
             } else {
-                // Configuración visual para el Estado Apagado (OFF)
                 boton.innerHTML = "SISTEMA DESACTIVADO (OFF)";
                 boton.className = "btn btn-off";
                 
-                // ¡CORRECCIÓN DE RAÍZ! Limpieza total de filas viejas al pasar a OFF
+                // Limpieza total inmediata al apagar
                 tabla.innerHTML = `
                     <tr id="fila-estado-off">
                         <td colspan="2" style="text-align: center; color: #7f8c8d; font-style: italic; padding: 15px;">
@@ -169,24 +164,24 @@
             }
         });
 
-        // =======================================================
-        // 2. ESCUCHAR LA ENTRADA DE NUEVAS DETECCIONES (ARDUINO)
-        // =======================================================
+        // 2. ESCUCHAR NUEVAS DETECCIONES
         db.ref('/detecciones').on('child_added', (snapshot) => {
-            // REGLA DE ORO: La interfaz web ignora todo evento si el botón está desactivado
-            if (sistemaActivo) {
-                const mensajeAlerta = snapshot.val();
-                const horaActual = new Date().toLocaleTimeString();
+            // Filtro: Solo pintamos si el sistema está en ON y es un evento del momento exacto
+            if (sistemaActivo === true && cargaInicialCompleta === true) {
+                let mensajeAlerta = snapshot.val();
                 
+                if (typeof mensajeAlerta === 'object' && mensajeAlerta !== null) {
+                    mensajeAlerta = mensajeAlerta.mensaje || "Movimiento Confirmado";
+                }
+                
+                const horaActual = new Date().toLocaleTimeString();
                 const tabla = document.getElementById('tabla-actividad');
                 const filaMensajeOff = document.getElementById('fila-estado-off');
                 
-                // Si el renglón de "Sistema apagado" está puesto, lo destruimos de inmediato
                 if (filaMensajeOff) {
                     filaMensajeOff.remove();
                 }
 
-                // Generamos la nueva fila estructurada con el evento en tiempo real
                 const nuevaFila = `
                     <tr>
                         <td style="padding: 12px; font-weight: bold; color: #c0392b;">⚠️ ${mensajeAlerta}</td>
@@ -194,18 +189,17 @@
                     </tr>
                 `;
                 
-                // Coloca la fila al inicio de la tabla (arriba se visualiza lo más reciente)
                 tabla.insertAdjacentHTML('afterbegin', nuevaFila);
             }
         });
 
-        // =======================================================
-        // 3. ENVIAR CAMBIO DE ESTADO AL HACER CLICK EN EL BOTÓN
-        // =======================================================
+        // 3. CAMBIAR ESTADO AL PRESIONAR EL BOTÓN
         function alternarSistema() {
-            // Invierte el booleano actual y actualiza Firebase automáticamente
-            db.ref('/estado_sistema').set(!sistemaActivo);
+            const nuevoEstado = !sistemaActivo;
+            db.ref('/estado_sistema').set(nuevoEstado)
+                .catch((error) => console.error("Error en Firebase:", error));
         }
     </script>
 </body>
 </html>
+
