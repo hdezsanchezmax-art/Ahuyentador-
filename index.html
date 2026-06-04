@@ -46,58 +46,81 @@
 </div>
 
 <script>
-    // Tu configuración de Firebase
-    const firebaseConfig = {
-        databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com"
-    };
+  // Variable local para controlar el flujo de la UI
+let sistemaActivo = false;
+
+// =======================================================
+// 1. ESCUCHAR EL INTERRUPTOR GENERAL (ON / OFF)
+// =======================================================
+db.ref('/estado_sistema').on('value', (snapshot) => {
+    sistemaActivo = snapshot.val();
     
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // 1. CONTROL DEL BOTÓN (ON/OFF)
-    const btn = document.getElementById('btnSistema');
-    let estadoActual = false;
-
-    db.ref('estado_sistema').on('value', (snapshot) => {
-        estadoActual = snapshot.val();
-        btn.innerText = estadoActual ? "SISTEMA ARMADO (ON)" : "SISTEMA DESACTIVADO (OFF)";
-        btn.style.backgroundColor = estadoActual ? "#e74c3c" : "#2ecc71";
-        btn.style.color = "white";
-    });
-
-    function toggleSistema() {
-        db.ref('estado_sistema').set(!estadoActual);
-    }
-
-    // 2. TABLA AUTOMÁTICA (Muestra los últimos 5 eventos)
-    db.ref('detecciones').limitToLast(5).on('value', (snapshot) => {
-        const cuerpo = document.getElementById('cuerpoTabla');
-        cuerpo.innerHTML = ""; // Limpia para no duplicar
+    const boton = document.getElementById('boton-sistema'); // Asegúrate de usar el ID real de tu botón
+    const tabla = document.getElementById('tabla-actividad'); // Asegúrate de usar el ID real de tu cuerpo de tabla (tbody)
+    
+    if (sistemaActivo) {
+        // Interfaz en modo Activo / Alerta
+        boton.innerHTML = "SISTEMA ARMADO (ON)";
+        boton.style.backgroundColor = "#dc3545"; // Rojo Alerta
         
-        const data = snapshot.val();
-        if (data) {
-            // Ordenar por la "key" (ID_) que tiene el timestamp de Arduino
-            const keys = Object.keys(data).sort().reverse();
-            
-            keys.forEach(key => {
-                const registro = data[key];
-                // Formateamos la hora actual para que coincida con tu reloj
-                const ahora = new Date();
-                const horaLegible = ahora.getHours() + ":" + 
-                                    ahora.getMinutes().toString().padStart(2, '0') + ":" + 
-                                    ahora.getSeconds().toString().padStart(2, '0');
-
-                let fila = `<tr class="new-row">
-                    <td>⚠️ Movimiento Confirmado</td>
-                    <td>${horaLegible}</td>
-                </tr>`;
-                cuerpo.innerHTML += fila;
-            });
-        } else {
-            cuerpo.innerHTML = "<tr><td colspan='2'>Sin actividad reciente</td></tr>";
+        // Si la tabla contiene el mensaje de apagado, la vaciamos para esperar datos reales
+        if (tabla.innerHTML.includes("Sistema apagado")) {
+            tabla.innerHTML = "";
         }
-    });
-</script>
+    } else {
+        // Interfaz en modo Desactivado / Seguro
+        boton.innerHTML = "SISTEMA DESACTIVADO (OFF)";
+        boton.style.backgroundColor = "#2ecc71"; // Verde Seguro
+        
+        // ¡EL TRUCO DE LIMPIEZA! Borra toda la actividad vieja al apagar el sistema
+        tabla.innerHTML = `
+            <tr id="fila-estado-off">
+                <td colspan="2" style="text-align: center; color: #7f8c8d; font-style: italic; padding: 15px;">
+                    🚫 Sistema apagado - Sin registros de actividad
+                </td>
+            </tr>
+        `;
+    }
+});
 
+// =======================================================
+// 2. ESCUCHAR LAS DETECCIONES EN TIEMPO REAL
+// =======================================================
+db.ref('/detecciones').on('child_added', (snapshot) => {
+    // REGLA DE ORO: Solo procesa y pinta si el sistema está activo en la pantalla
+    if (sistemaActivo) {
+        const mensajeAlerta = snapshot.val();
+        const horaActual = new Date().toLocaleTimeString();
+        
+        const tabla = document.getElementById('tabla-actividad');
+        const filaMensajeOff = document.getElementById('fila-estado-off');
+        
+        // Si el mensaje de "Sistema apagado" está presente, lo removemos de inmediato
+        if (filaMensajeOff) {
+            filaMensajeOff.remove();
+        }
+
+        // Creamos la nueva fila estructurada con el evento real
+        const nuevaFila = `
+            <tr style="animation: fadeIn 0.5s ease-in-out;">
+                <td style="padding: 12px; font-weight: bold; color: #c0392b;">⚠️ ${mensajeAlerta}</td>
+                <td style="padding: 12px; color: #2c3e50;">${horaActual}</td>
+            </tr>
+        `;
+        
+        // Insertar el nuevo evento al principio de la tabla para ver lo más reciente arriba
+        tabla.insertAdjacentHTML('afterbegin', nuevaFila);
+    }
+});
+
+// =======================================================
+// 3. FUNCIÓN DEL BOTÓN PARA CAMBIAR EL ESTADO (REGISTRO DEL CLICK)
+// =======================================================
+function alternarSistema() {
+    // Invierte el estado actual y lo empuja a Firebase
+    db.ref('/estado_sistema').set(!sistemaActivo);
+}
+</script>
+    
 </body>
 </html>
