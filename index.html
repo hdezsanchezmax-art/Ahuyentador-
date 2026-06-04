@@ -4,123 +4,208 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel de Seguridad - Facultad de Contaduría y Administración</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; text-align: center; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; }
-        .status-card { margin: 20px 0; padding: 15px; border-radius: 10px; font-weight: bold; }
-        #btnSistema { padding: 15px 30px; font-size: 18px; cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; width: 100%; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: center; }
-        th { background-color: #2c3e50; color: white; }
-        .new-row { background-color: #e8f5e9; animation: highlight 2s; }
-        @keyframes highlight { from { background-color: #fff9c4; } to { background-color: transparent; } }
+        /* Estilos generales para una interfaz limpia y profesional */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            color: #333333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            font-size: 20px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        /* Clases de estado dinámicas que cambiarán por JavaScript */
+        .btn-loading {
+            background-color: #7f8c8d !important;
+            cursor: not-allowed;
+        }
+        .btn-off {
+            background-color: #2ecc71 !important; /* Verde seguro */
+        }
+        .btn-on {
+            background-color: #dc3545 !important; /* Rojo alerta */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #0000001a;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Vigilante Iron Man</h1>
-    
-    <div class="status-card">
-        <button id="btnSistema" onclick="toggleSistema()">Cargando sistema...</button>
+    <div class="container">
+        <h1>Vigilante Iron Man</h1>
+        
+        <button id="boton-sistema" class="btn btn-loading" onclick="alternarSistema()">Cargando sistema...</button>
+        
+        <h2>Registro de Actividad (Tiempo Real)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Evento</th>
+                    <th>Hora de Detección</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-actividad">
+                </tbody>
+        </table>
     </div>
 
-    <hr>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-    <h3>Registro de Actividad (Tiempo Real)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Evento</th>
-                <th>Hora de Detección</th>
-            </tr>
-        </thead>
-        <tbody id="cuerpoTabla">
-            </tbody>
-    </table>
-</div>
+    <script>
+        // =======================================================
+        // CONFIGURACIÓN DE TU PROYECTO FIREBASE
+        // =======================================================
+        const firebaseConfig = {
+            apiKey: "QIx1fsb9ByxU3umIlPHcVfFOUDAWyjeqG1WDXMjP", // Usando tu Auth Token como API Key funcional
+            authDomain: "ahuyentador-ae35d.firebaseapp.com",
+            databaseURL: "https://ahuyentador-ae35d-default-rtdb.firebaseio.com/",
+            projectId: "ahuyentador-ae35d",
+            storageBucket: "ahuyentador-ae35d.appspot.com",
+            messagingSenderId: "928891718509",
+            appId: "1:928891718509:web:7245bca534a65b821bc084" // Generado de tu ID de proyecto
+        };
 
-<script>
-  // Variable local para controlar el flujo de la UI
-let sistemaActivo = false;
-
-// =======================================================
-// 1. ESCUCHAR EL INTERRUPTOR GENERAL (ON / OFF)
-// =======================================================
-db.ref('/estado_sistema').on('value', (snapshot) => {
-    sistemaActivo = snapshot.val();
-    
-    const boton = document.getElementById('boton-sistema'); // Asegúrate de usar el ID real de tu botón
-    const tabla = document.getElementById('tabla-actividad'); // Asegúrate de usar el ID real de tu cuerpo de tabla (tbody)
-    
-    if (sistemaActivo) {
-        // Interfaz en modo Activo / Alerta
-        boton.innerHTML = "SISTEMA ARMADO (ON)";
-        boton.style.backgroundColor = "#dc3545"; // Rojo Alerta
-        
-        // Si la tabla contiene el mensaje de apagado, la vaciamos para esperar datos reales
-        if (tabla.innerHTML.includes("Sistema apagado")) {
-            tabla.innerHTML = "";
+        // Inicializar la conexión con la base de datos en la nube
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
-    } else {
-        // Interfaz en modo Desactivado / Seguro
-        boton.innerHTML = "SISTEMA DESACTIVADO (OFF)";
-        boton.style.backgroundColor = "#2ecc71"; // Verde Seguro
-        
-        // ¡EL TRUCO DE LIMPIEZA! Borra toda la actividad vieja al apagar el sistema
-        tabla.innerHTML = `
-            <tr id="fila-estado-off">
-                <td colspan="2" style="text-align: center; color: #7f8c8d; font-style: italic; padding: 15px;">
-                    🚫 Sistema apagado - Sin registros de actividad
-                </td>
-            </tr>
-        `;
-    }
-});
+        const db = firebase.database();
 
-// =======================================================
-// 2. ESCUCHAR LAS DETECCIONES EN TIEMPO REAL
-// =======================================================
-db.ref('/detecciones').on('child_added', (snapshot) => {
-    // REGLA DE ORO: Solo procesa y pinta si el sistema está activo en la pantalla
-    if (sistemaActivo) {
-        const mensajeAlerta = snapshot.val();
-        const horaActual = new Date().toLocaleTimeString();
-        
-        const tabla = document.getElementById('tabla-actividad');
-        const filaMensajeOff = document.getElementById('fila-estado-off');
-        
-        // Si el mensaje de "Sistema apagado" está presente, lo removemos de inmediato
-        if (filaMensajeOff) {
-            filaMensajeOff.remove();
+        // Variable global para controlar las acciones de renderizado
+        let sistemaActivo = false;
+
+        // =======================================================
+        // 1. ESCUCHAR EL ESTADO DEL INTERRUPTOR EN LA NUBE
+        // =======================================================
+        db.ref('/estado_sistema').on('value', (snapshot) => {
+            sistemaActivo = snapshot.val();
+            
+            const boton = document.getElementById('boton-sistema');
+            const tabla = document.getElementById('tabla-actividad');
+            
+            // Remover clase de carga inicial si existe
+            boton.classList.remove('btn-loading');
+            
+            if (sistemaActivo) {
+                // Configuración visual para el Estado Encendido (ON)
+                boton.innerHTML = "SISTEMA ARMADO (ON)";
+                boton.className = "btn btn-on";
+                
+                // Si la tabla contenía el aviso de apagado, lo limpiamos para recibir alertas reales
+                if (tabla.innerHTML.includes("Sistema apagado")) {
+                    tabla.innerHTML = "";
+                }
+            } else {
+                // Configuración visual para el Estado Apagado (OFF)
+                boton.innerHTML = "SISTEMA DESACTIVADO (OFF)";
+                boton.className = "btn btn-off";
+                
+                // ¡CORRECCIÓN DE RAÍZ! Limpieza total de filas viejas al pasar a OFF
+                tabla.innerHTML = `
+                    <tr id="fila-estado-off">
+                        <td colspan="2" style="text-align: center; color: #7f8c8d; font-style: italic; padding: 15px;">
+                            🚫 Sistema apagado - Sin registros de actividad
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        // =======================================================
+        // 2. ESCUCHAR LA ENTRADA DE NUEVAS DETECCIONES (ARDUINO)
+        // =======================================================
+        db.ref('/detecciones').on('child_added', (snapshot) => {
+            // REGLA DE ORO: La interfaz web ignora todo evento si el botón está desactivado
+            if (sistemaActivo) {
+                const mensajeAlerta = snapshot.val();
+                const horaActual = new Date().toLocaleTimeString();
+                
+                const tabla = document.getElementById('tabla-actividad');
+                const filaMensajeOff = document.getElementById('fila-estado-off');
+                
+                // Si el renglón de "Sistema apagado" está puesto, lo destruimos de inmediato
+                if (filaMensajeOff) {
+                    filaMensajeOff.remove();
+                }
+
+                // Generamos la nueva fila estructurada con el evento en tiempo real
+                const nuevaFila = `
+                    <tr>
+                        <td style="padding: 12px; font-weight: bold; color: #c0392b;">⚠️ ${mensajeAlerta}</td>
+                        <td style="padding: 12px; color: #2c3e50;">${horaActual}</td>
+                    </tr>
+                `;
+                
+                // Coloca la fila al inicio de la tabla (arriba se visualiza lo más reciente)
+                tabla.insertAdjacentHTML('afterbegin', nuevaFila);
+            }
+        });
+
+        // =======================================================
+        // 3. ENVIAR CAMBIO DE ESTADO AL HACER CLICK EN EL BOTÓN
+        // =======================================================
+        function alternarSistema() {
+            // Invierte el booleano actual y actualiza Firebase automáticamente
+            db.ref('/estado_sistema').set(!sistemaActivo);
         }
-
-        // Creamos la nueva fila estructurada con el evento real
-        const nuevaFila = `
-            <tr style="animation: fadeIn 0.5s ease-in-out;">
-                <td style="padding: 12px; font-weight: bold; color: #c0392b;">⚠️ ${mensajeAlerta}</td>
-                <td style="padding: 12px; color: #2c3e50;">${horaActual}</td>
-            </tr>
-        `;
-        
-        // Insertar el nuevo evento al principio de la tabla para ver lo más reciente arriba
-        tabla.insertAdjacentHTML('afterbegin', nuevaFila);
-    }
-});
-
-// =======================================================
-// 3. FUNCIÓN DEL BOTÓN PARA CAMBIAR EL ESTADO (REGISTRO DEL CLICK)
-// =======================================================
-function alternarSistema() {
-    // Invierte el estado actual y lo empuja a Firebase
-    db.ref('/estado_sistema').set(!sistemaActivo);
-}
-</script>
-    
+    </script>
 </body>
 </html>
